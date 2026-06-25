@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  qr-gym-app:
+    build: .
+    container_name: qr-gym-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:../data/dev.db
+    volumes:
+      - qr-gym-data:/app/data
+      - qr-gym-uploads:/app/uploads
+
+volumes:
+  qr-gym-data:
+  qr-gym-uploads:

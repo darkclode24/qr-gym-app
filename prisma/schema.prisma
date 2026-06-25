@@ -1,0 +1,45 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // bcrypt hash
+  createdAt DateTime @default(now())
+}
+
+model Member {
+  id             String        @id @default(uuid())
+  qrCode         String        @unique @default(uuid()) // UUID for QR
+  memberId       String        @unique                  // NIM/NIP or YYYY-NNNNNN
+  name           String
+  phone          String                                 // WhatsApp-active
+  userType       String                                 // STUDENT | STAFF | PUBLIC
+  profilePicture String                                 // file path or filename
+  membershipType String                                 // DAILY | MONTHLY
+  status         String        @default("PENDING")      // PENDING | APPROVED | REJECTED
+  validFrom      DateTime?                              // set on approval
+  validUntil     DateTime?                              // calculated on approval
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  checkIns       CheckIn[]
+}
+
+model CheckIn {
+  id        String   @id @default(uuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  checkedAt DateTime @default(now())
+}
+
+model PublicIdCounter {
+  id      String @id @default("counter")
+  year    Int
+  counter Int    @default(0)
+}
