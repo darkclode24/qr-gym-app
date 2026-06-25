@@ -550,7 +550,7 @@ export default function MemberDetailPage() {
                         renewType === "DAILY" ? "bg-[#f5b731] text-black" : "text-gray-400 hover:text-white"
                       }`}
                     >
-                      Harian (1 Hari)
+                      Harian
                     </button>
                     <button
                       onClick={() => setRenewType("MONTHLY")}
@@ -558,7 +558,7 @@ export default function MemberDetailPage() {
                         renewType === "MONTHLY" ? "bg-[#f5b731] text-black" : "text-gray-400 hover:text-white"
                       }`}
                     >
-                      Bulanan (30 Hari)
+                      Bulanan
                     </button>
                     <button
                       onClick={() => setRenewType("CUSTOM")}

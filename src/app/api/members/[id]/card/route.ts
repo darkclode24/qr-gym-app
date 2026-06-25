@@ -11,6 +11,13 @@ type RouteParams = {
 
 export const runtime = "nodejs";
 
+const CARD_TEMPLATE = {
+  left: 14,
+  top: 7,
+  width: 1001,
+  height: 631,
+} as const;
+
 const MONTHS = [
   "JAN",
   "FEB",
@@ -26,6 +33,8 @@ const MONTHS = [
   "DES",
 ];
 
+let cardTemplatePromise: Promise<Buffer> | null = null;
+
 function escapeXml(value: string) {
   return value.replace(/[<>&'"]/g, (character) => {
     const entities: Record<string, string> = {
@@ -37,6 +46,23 @@ function escapeXml(value: string) {
     };
     return entities[character];
   });
+}
+
+function loadCardTemplate() {
+  cardTemplatePromise ??= readFile(
+    path.join(
+      /* turbopackIgnore: true */ process.cwd(),
+      "asset",
+      "card.png",
+    ),
+  ).then((file) =>
+    sharp(file)
+      .extract(CARD_TEMPLATE)
+      .png()
+      .toBuffer(),
+  );
+
+  return cardTemplatePromise;
 }
 
 function formatDate(value: Date | null) {
@@ -101,12 +127,12 @@ function statusOverlay(status: string, validUntil: Date | null) {
         : "Keanggotaan Telah Habis";
 
   return `
-    <rect width="600" height="360" rx="24" fill="#000" opacity="0.78"/>
-    <g transform="translate(300 180) rotate(-8)">
-      <rect x="-105" y="-31" width="210" height="62" rx="12" fill="none" stroke="${color}" stroke-width="4"/>
-      <text x="0" y="9" text-anchor="middle" fill="${color}" font-size="24" font-weight="900" letter-spacing="5">${label}</text>
+    <rect width="${CARD_TEMPLATE.width}" height="${CARD_TEMPLATE.height}" rx="32" fill="#000" opacity="0.78"/>
+    <g transform="translate(500.5 315.5) rotate(-8)">
+      <rect x="-175" y="-52" width="350" height="104" rx="18" fill="none" stroke="${color}" stroke-width="7"/>
+      <text x="0" y="15" text-anchor="middle" fill="${color}" font-size="40" font-weight="900" letter-spacing="8">${label}</text>
     </g>
-    <text x="300" y="239" text-anchor="middle" fill="#a1a1aa" font-size="12">${detail}</text>
+    <text x="500.5" y="414" text-anchor="middle" fill="#d4d4d8" font-size="20" font-weight="700">${detail}</text>
   `;
 }
 
@@ -125,79 +151,69 @@ export const GET = auth(async (req, ctx) => {
     );
   }
 
-  const [qrDataUrl, profileDataUrl] = await Promise.all([
+  const [cardTemplate, qrDataUrl, profileDataUrl] = await Promise.all([
+    loadCardTemplate(),
     QRCode.toDataURL(member.qrCode, {
       color: { dark: "#000000", light: "#ffffff" },
       margin: 1,
-      width: 300,
+      width: 600,
     }),
     loadProfileDataUrl(member.profilePicture),
   ]);
 
-  const displayName = escapeXml(member.name.toUpperCase().slice(0, 25));
+  const rawDisplayName = member.name.toUpperCase().slice(0, 30);
+  const displayName = escapeXml(rawDisplayName);
+  const nameFontSize =
+    rawDisplayName.length <= 12
+      ? 42
+      : rawDisplayName.length <= 18
+        ? 34
+        : rawDisplayName.length <= 24
+          ? 29
+          : 25;
   const memberId = escapeXml(member.memberId);
   const membership = member.membershipType === "DAILY" ? "HARIAN" : "BULANAN";
   const userType = escapeXml(member.userType);
   const profile = profileDataUrl
-    ? `<image href="${profileDataUrl}" x="28" y="146" width="96" height="112" preserveAspectRatio="xMidYMid slice" clip-path="url(#photo-clip)"/>`
-    : `
-      <rect x="28" y="146" width="96" height="112" rx="16" fill="#2d2d2d"/>
-      <circle cx="76" cy="184" r="22" fill="#71717a"/>
-      <path d="M42 246c5-25 20-37 34-37s29 12 34 37" fill="#71717a"/>
-    `;
+    ? `<image href="${profileDataUrl}" x="62" y="189" width="156" height="155" preserveAspectRatio="xMidYMid slice" clip-path="url(#photo-clip)"/>`
+    : "";
 
-  const pattern = Array.from({ length: 12 }, (_, index) => {
-    const column = index % 3;
-    const row = Math.floor(index / 3);
-    return `<rect x="${397 + column * 64}" y="${42 + row * 82}" width="25" height="25" fill="none" stroke="#111" opacity="0.16" transform="rotate(45 ${409 + column * 64} ${54 + row * 82})"/>`;
-  }).join("");
-
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360">
+  const overlay = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${CARD_TEMPLATE.width}" height="${CARD_TEMPLATE.height}" viewBox="0 0 ${CARD_TEMPLATE.width} ${CARD_TEMPLATE.height}">
       <defs>
-        <clipPath id="card-clip"><rect width="600" height="360" rx="24"/></clipPath>
-        <clipPath id="photo-clip"><rect x="28" y="146" width="96" height="112" rx="16"/></clipPath>
+        <clipPath id="photo-clip"><rect x="62" y="189" width="156" height="155" rx="20"/></clipPath>
       </defs>
-      <g clip-path="url(#card-clip)" font-family="Arial, Helvetica, sans-serif">
-        <rect width="600" height="360" fill="#0c0d0e"/>
-        <path d="M370 0H600V360H345Z" fill="#f5b731"/>
-        <path d="M361 0H374L349 360H336Z" fill="#f5b731" opacity="0.7"/>
-        <path d="M371 0H380L355 360H346Z" fill="#000" opacity="0.35"/>
-        ${pattern}
-
-        <circle cx="52" cy="52" r="24" fill="#f5b731" stroke="#fde68a"/>
-        <path d="M35 49h34v6H35zM30 42h6v20h-6zM68 42h6v20h-6z" fill="#111"/>
-        <circle cx="52" cy="52" r="12" fill="none" stroke="#111" stroke-width="2"/>
-        <text x="90" y="47" fill="#9ca3af" font-size="10" font-weight="700" letter-spacing="2">UNIVERSITAS SRIWIJAYA</text>
-        <text x="90" y="66" fill="#f5b731" font-size="15" font-weight="900" letter-spacing="1">FITNESS CENTER</text>
-
-        <rect x="26" y="144" width="100" height="116" rx="18" fill="#2d2d2d" stroke="#52525b" stroke-width="2"/>
+      <g font-family="DejaVu Sans, Arial, sans-serif">
         ${profile}
-        <text x="142" y="190" fill="#9ca3af" font-size="9" font-weight="700" letter-spacing="1">MEMBER NAME</text>
-        <text x="142" y="217" fill="#fff" font-size="20" font-weight="900">${displayName}</text>
-        <rect x="142" y="229" width="48" height="2" fill="#f5b731"/>
 
-        <line x1="28" y1="288" x2="335" y2="288" stroke="#27272a"/>
-        <text x="28" y="307" fill="#9ca3af" font-size="8" font-weight="700" letter-spacing="1">MEMBERSHIP</text>
-        <text x="28" y="326" fill="#fff" font-size="12" font-weight="700">${membership}</text>
-        <text x="132" y="307" fill="#9ca3af" font-size="8" font-weight="700" letter-spacing="1">VALID UNTIL</text>
-        <text x="132" y="326" fill="#fff" font-size="12" font-weight="700">${formatDate(member.validUntil)}</text>
-        <text x="335" y="326" text-anchor="end" fill="#9ca3af" font-size="10" font-weight="700">ID: ${memberId}</text>
+        <rect x="49" y="405" width="405" height="54" fill="#0d0f10"/>
+        <text x="50" y="447" fill="#fff" font-size="${nameFontSize}" font-weight="900" letter-spacing="1">${displayName}</text>
 
-        <text x="485" y="72" text-anchor="middle" fill="#111" font-size="8" font-weight="900" letter-spacing="2">QR CODE</text>
-        <rect x="411" y="82" width="148" height="148" rx="16" fill="#fff" stroke="#ca8a04"/>
-        <image href="${qrDataUrl}" x="419" y="90" width="132" height="132"/>
-        <rect x="424" y="251" width="122" height="42" rx="12" fill="#0c0d0e"/>
-        <text x="485" y="277" text-anchor="middle" fill="#f5b731" font-size="12" font-weight="900" letter-spacing="2">${userType}</text>
+        <rect x="49" y="522" width="260" height="43" fill="#0d0f10"/>
+        <text x="50" y="552" fill="#fff" font-size="27" font-weight="700">${membership}</text>
+
+        <rect x="360" y="522" width="169" height="43" fill="#0d0f10"/>
+        <path d="M482 522H513L504 565H473Z" fill="#e4c333"/>
+        <path d="M513 522H524L515 565H504Z" fill="#0d0f10"/>
+        <path d="M524 522H529V565H515Z" fill="#ffc30b"/>
+        <text x="361" y="552" fill="#fff" font-size="21" font-weight="700">${formatDate(member.validUntil)}</text>
+
+        <rect x="49" y="582" width="345" height="37" fill="#0d0f10"/>
+        <text x="50" y="607" fill="#b9bac0" font-size="22" font-weight="500" letter-spacing="1">ID  ${memberId}</text>
+
+        <rect x="733" y="229" width="184" height="184" fill="#fff"/>
+        <image href="${qrDataUrl}" x="733" y="229" width="184" height="184"/>
+
+        <rect x="705" y="488" width="239" height="62" rx="18" fill="#0d0f10"/>
+        <text x="824.5" y="531" text-anchor="middle" fill="#ffc30b" font-size="30" font-weight="900" letter-spacing="2">${userType}</text>
 
         ${statusOverlay(member.status, member.validUntil)}
       </g>
-      <rect x="0.5" y="0.5" width="599" height="359" rx="23.5" fill="none" stroke="#2d2d2d"/>
     </svg>
   `;
 
-  const png = await sharp(Buffer.from(svg))
-    .resize(1200, 720)
+  const png = await sharp(cardTemplate)
+    .composite([{ input: Buffer.from(overlay), top: 0, left: 0 }])
     .png({ compressionLevel: 9 })
     .toBuffer();
   const safeName =

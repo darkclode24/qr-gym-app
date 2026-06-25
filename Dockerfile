@@ -20,12 +20,13 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV production
-ENV PORT 3000
+ENV NODE_ENV=production
+ENV PORT=3000
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache font-dejavu fontconfig openssl
 
 # Copy necessary files from builder
+COPY --from=builder /app/asset ./asset
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
