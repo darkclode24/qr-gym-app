@@ -1,3 +1,4 @@
+name: qr-gym
 version: "3.8"
 
 services:
