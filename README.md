@@ -1,4 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QR Gym
+
+## Receptionist deployment
+
+Production releases are published as a prebuilt Docker image:
+
+```text
+ghcr.io/darkclode24/qr-gym-app:stable
+```
+
+Create a GitHub Release to build and publish a tested image and attach
+`QR-Gym-Receptionist.zip`. Give that ZIP to the receptionist.
+
+The receptionist installs Docker Desktop and double-clicks:
+
+```text
+Install QR Gym.bat
+```
+
+Updates always create a stopped, consistent backup before replacing the
+application container. Database and uploads are stored in external volumes
+using the legacy-compatible names:
+
+```text
+qr-gym_qr-gym-data
+qr-gym_qr-gym-uploads
+```
+
+The deployment scripts contain no volume deletion or prune commands. Backups
+are stored under `Documents\QR-Gym-Backups`.
+
+Before distribution, make the repository's GHCR package public. Otherwise the
+receptionist computer must authenticate to `ghcr.io`.
+
+Do not use `prisma db push` in production. Add and review a Prisma migration,
+then publish a release. Existing databases made by the old Docker entrypoint
+are schema-checked and safely baselined on their first upgraded start.
+
+## Local development
 
 ## Getting Started
 

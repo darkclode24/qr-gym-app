@@ -1,0 +1,36 @@
+name: qr-gym
+
+services:
+  app:
+    image: ${QR_GYM_IMAGE:-ghcr.io/darkclode24/qr-gym-app:stable}
+    container_name: qr-gym-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:../data/dev.db
+    volumes:
+      - qr-gym-data:/app/data
+      - qr-gym-uploads:/app/uploads
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    stop_grace_period: 30s
+
+volumes:
+  qr-gym-data:
+    external: true
+    name: qr-gym_qr-gym-data
+  qr-gym-uploads:
+    external: true
+    name: qr-gym_qr-gym-uploads
