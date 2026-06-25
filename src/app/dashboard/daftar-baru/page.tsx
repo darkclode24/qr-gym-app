@@ -22,6 +22,7 @@ export default function DaftarBaruPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>("");
   const [cameraActive, setCameraActive] = useState(false);
+  const [isUpsideDown, setIsUpsideDown] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -72,6 +73,13 @@ export default function DaftarBaruPage() {
         // Mirror effect for front camera selfie
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
+        
+        if (isUpsideDown) {
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(Math.PI);
+          ctx.translate(-canvas.width / 2, -canvas.height / 2);
+        }
+        
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         canvas.toBlob((blob) => {
@@ -384,9 +392,19 @@ export default function DaftarBaruPage() {
                     ref={videoRef}
                     autoPlay
                     playsInline
-                    className="w-full h-full object-cover transform scale-x-[-1]"
+                    className={`w-full h-full object-cover transform scale-x-[-1] transition duration-300 ${isUpsideDown ? "rotate-180" : ""}`}
                   />
                   <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsUpsideDown(!isUpsideDown)}
+                      className="px-4 py-2.5 bg-zinc-800/90 hover:bg-zinc-700 text-white font-extrabold text-xs rounded-xl border border-zinc-600 transition duration-200"
+                      title="Putar Balik Kamera"
+                    >
+                      <svg className="w-4 h-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
                     <button
                       type="button"
                       onClick={capturePhoto}
